@@ -20,6 +20,7 @@
 import numpy as np
 from copy import deepcopy
 import time
+import pdb
 
 def rect2Sphere(*args):
 	'''
@@ -80,13 +81,14 @@ def sphere2Rect(*args):
 	examples:
 		for single coordinates
 			input: np.array([r, theta, fai])
+			   or  np.mat([r, theta, fai])
 		
 			sphere2Rect(np.array([1,45,0]))
 			output = (0.70710678118654757, 0.70710678118654746, 0.0)
 			it is (x, y, z)
 
 		for array coordinates
-			input: np.array([r1,r2,r3....]), np.array([theta1, theta2, theta3....]), np.array([fai1, fai2, fai3.....])
+			input: np.array([r1,r2,r3....]), np.array([theta1, theta2, theta3....]), np.array([fai1, fai2, fai3.....]) or the same np.mat
 		
 			sphere2Rect(np.array([1,2,3]), np.array([0,45,90]), np.array([30,0,-30]))
 			output = 
@@ -174,7 +176,7 @@ def roty(theta):
 	                   [z])
 	Where R is the coordinates in a new system obtained by rotating the original system about y-axis by an angle theta counterclockwisely.
 	'''
-	Rot = np.matrix([[np.cos(theta,0,-np.sin(theta))],[0,1,0],[np.sin(theta,0,np.cos(theta))]])
+	Rot = np.matrix([[np.cos(theta),0,-np.sin(theta)],[0,1,0],[np.sin(theta),0,np.cos(theta)]])
 	return Rot
 
 
@@ -228,11 +230,7 @@ def dec22Dec(Dec2):
 			                 [degree2, minute2, second2],
 							 [degree3, minute3, second3],
 							 ...)
-
-			dec22Dec(np.array([[45,20,30],
-			                   [-128,-30,-30],
-							   [249,40,30]]))
-			output = 
+np.array([45.51]))= 
 			array([  45.34166667, -128.50833333,  249.675   ])
 			they are the degrees 
 	'''
@@ -323,7 +321,7 @@ def dec2Time(dec):
 		for single degree
 			input: np.array([degree])
 
-			dec2Time([15.51])
+			dec2Time(np.array([15.51]))
 			output = 
 			array([[ 1. ,  2. ,  2.4]])
 
@@ -343,33 +341,33 @@ def HourAngle2Horizontal(inputHourAngle, inputDE,  latitude=39.93):
 	'''
 	HourAngle coordinate system to Horizontal coordinate system
 	HourAngle2Horizontal(inputHourAngle, inputDE,  latitude=39.93)
-		inputHourAngle is the hourAngle of the object
-		inputDE is the latitude of the object
+		inputHourAngle is the hourAngle of the object (should be degrees)
+		inputDE is the latitude of the object (should be degrees)
 		latitude is the geographic latitude of the observatory(default is 39.93 in Beijing)
 
 	examples:
 	for single input:
 	input: np.array([XXhour, XXminute, XXsecond]), np.array([XXdegree, XXminute, XXsecond]), latitude
-		HourAngle2Horizontal(np.array([22,32,19]),np.array([-23, -43, -03]))
-		output =
-		(array([ 158.        ,   10.        ,   40.69303984]), # Az
-		 array([ 23.        ,   8.        ,  58.66820603]))    # Alt
+		HourAngle2Horizontal(time2Dec(np.array([22,32,19])),dec22Dec(np.array([-23, -43, -03])))
+		output = (the answer of)
+		(dec22Dec(array([ 158.        ,   10.        ,   40.69303984])), # Az
+		 dec22Dec(array([ 23.        ,   8.        ,  58.66820603])))    # Alt
 
-		HourAngle2Horizontal(np.array([22,32,19]),np.array([-23, -43, -03]),120)
-		output =
-		(array([ 147.        ,   23.        ,   58.90998699]), # Az
-		 array([-50.        , -37.        , -30.68584123]))    # Alt
+		HourAngle2Horizontal(time2Dec(np.array([22,32,19])),dec22Dec(np.array([-23, -43, -03])),120)
+		output = (the answer of)
+		(dec22Dec(array([ 147.        ,   23.        ,   58.90998699])), # Az
+		 dec22Dec(array([-50.        , -37.        , -30.68584123])))    # Alt
 
 	 for array input:
-		HourAngle2Horizontal(np.array([[22,32,19],[23,42,19]]),np.array([[-23, -43, -03],[-23,0,-32]]))
-		output = 
-		(array([[ 158.        ,   10.        ,   40.69303984],
-		       [ 175.        ,   26.        ,    8.90077392]]), # Azs
-		 array([[ 23.        ,   8.        ,  58.66820603],
-		        [ 26.        ,  55.        ,  33.89142343]]))   # Alts
+		HourAngle2Horizontal(time2Dec(np.array([[22,32,19],[23,42,19]])),dec22Dec(np.array([[-23, -43, -03],[-23,0,-32]])))
+		output = (the answer of)
+		(dec22Dec(array([[ 158.        ,   10.        ,   40.69303984],
+		       [ 175.        ,   26.        ,    8.90077392]])), # Azs
+		 dec22dec(array([[ 23.        ,   8.        ,  58.66820603],
+		        [ 26.        ,  55.        ,  33.89142343]])))   # Alts
 	'''
-	hourAngle = time2Dec(inputHourAngle)
-	delta = dec22Dec(inputDE)
+	hourAngle = inputHourAngle
+	delta = inputDE
 	x,y,z = sphere2Rect((hourAngle<999)*1,hourAngle,delta)
 	rotmat = fy()*rotz(np.pi/2)*rotx(dec2Rad(90-latitude))*rotz(np.pi/2)*fy()
 	if len(x.shape)==0:
@@ -385,34 +383,34 @@ def HourAngle2Horizontal(inputHourAngle, inputDE,  latitude=39.93):
 
 	_r, _Az, _Alt = rect2Sphere(_x,_y,_z)
 	
-	return dec2Dec2(_Az), dec2Dec2(_Alt) 
+	return _Az, _Alt 
 
 def Horizontal2HourAngle(inputAz, inputAlt, latitude=39.93):	
 	'''
 	Horizontal coordinate system to HourAngle coordinate system
 	Horizontal2HourAngle(inputAz, inputAlt, latitude=39.93)
-		inputAz is the azimuth of the object
-		inputAlt is the altitude of the object
+		inputAz is the azimuth of the object (should be degrees)
+		inputAlt is the altitude of the object (should be degrees)
 		latitude is the geographic latitude of the observatory(default is 39.93 in Beijing)
 
 	examples:
 	for single input:
 		input: np.array([XXdegree, XXminute, XXsecond]), np.array([XXdegree, XXminute, XXsecond]), latitude
-		Horizontal2HourAngle(np.array([158,10,40.7]), np.array([23, 8, 58.7]))
-		output = 
-		(array([ 22.        ,  32.        ,  19.00116365]), # hourAngle
-		array([-23.        , -43.        ,  -2.97177883]))  # latitude
+		Horizontal2HourAngle(dec22Dec(np.array([158,10,40.7])), dec22Dec(np.array([23, 8, 58.7])))
+		output = (the answer of)
+		(time2Dec(array([ 22.        ,  32.        ,  19.00116365])), # hourAngle
+		dec22dec(array([-23.        , -43.        ,  -2.97177883])))  # latitude
 
 	for array input:
-		Horizontal2HourAngle(np.array([[158,10,40.7],[175,26,8.9]]),np.array([[23,8,58.7],[26,55,33.9]]))
-		output = 
-		(array([[ 22.        ,  32.        ,  19.00116365],
-		       [ 23.        ,  42.        ,  18.99999131]]),
-		 array([[-23.        , -43.        ,  -2.97177883],
-			   [-23.        ,  -0.        , -31.99139656]]))
+		Horizontal2HourAngle(dec22Dec(np.array([[158,10,40.7],[175,26,8.9]])),dec22Dec(np.array([[23,8,58.7],[26,55,33.9]])))
+		output = (the answer of)
+		(time2Dec(array([[ 22.        ,  32.        ,  19.00116365],
+		       [ 23.        ,  42.        ,  18.99999131]])),
+		 time2Dec(array([[-23.        , -43.        ,  -2.97177883],
+			   [-23.        ,  -0.        , -31.99139656]])))
 	'''
-	Az = dec22Dec(inputAz)
-	Alt = dec22Dec(inputAlt)
+	Az = inputAz
+	Alt = inputAlt
 
 	x,y,z = sphere2Rect((Az<999)*1,Az,Alt)
 	rotmat = fy()*rotz(-np.pi/2)*rotx(dec2Rad(latitude-90))*rotz(-np.pi/2)*fy()
@@ -429,7 +427,7 @@ def Horizontal2HourAngle(inputAz, inputAlt, latitude=39.93):
 	_z = rotVectors[2,:].A1
 
 	_r, _t, _DE = rect2Sphere(_x,_y,_z)
-	return dec2Time(_t), dec2Dec2(_DE)
+	return _t, _DE
 
 def genTimeSeries(timeChar):
 	'''
@@ -444,8 +442,8 @@ def Equatorial2Horizontal(inputAlpha, inputDelta, longitude=116.4, latitude=39.9
 	'''
 	Equatorial coordinate system to Horizontal coordinate system
 		Equatorial2Horizontal(inputAlpha, inputDelta, longitude=116.4, latitude=39.93, *args)
-		inputAlpha is the longitude of the object
-		inputDelta is the latitude of the object
+		inputAlpha is the longitude of the object (should be degrees)
+		inputDelta is the latitude of the object (should be degrees)
 		longitude is the geographic longitude of the observatory (default is 116.4 in Beijing)
 		latitude is the geographic latitude of the observatory(default is 39.93 in Beijing)
 		Time is the timeAndData list generated by function genTimeSeries, which represent the time, default is NOW.
@@ -462,8 +460,8 @@ def Horizontal2Equatorial(inputAz, inputAlt, longitude=116.4, latitude=39.93, Ti
 	'''
 	Horizontal coordinate system to Equatorial coordinate system
 		Horizontal2Equatorial(inputAz, inputAlt, longitude=116.4, latitude=39.93, *args)
-		inputAz is the azimuth of the object
-		inputAlt is the altitude of the object
+		inputAz is the azimuth of the object (should be degrees)
+		inputAlt is the altitude of the object (should be degrees)
 		longitude is the geographic longitude of the observatory (default is 116.4 in Beijing)
 		latitude is the geographic latitude of the observatory(default is 39.93 in Beijing)
 		Time is the timeAndData list generated by function genTimeSeries, which represent the time, default is NOW.
@@ -481,42 +479,42 @@ def Equatorial2HourAngle(inputAlpha,inputDelta,longitude=116.4,Time=[]):
 	'''
 	Equatorial coordinate system to HourAngle coordinate system
 		Equatorial2HourAngle(inputAlpha,inputDelta,longitude=116.4,Time=[])
-		inputAlpha is the longitude of the object
-		inputDelta is the latitude of the object
+		inputAlpha is the longitude of the object (should be degrees)
+		inputDelta is the latitude of the object (should be degrees)
 		longitude is the geographic longitude of the observatory (default is 116.4 in Beijing)
 		Time is the timeAndData list generated by function genTimeSeries, which represent the time, default is NOW.
 
 	output: hourAngle,latitude
 
 	for single input:
-		input: np.array([XXdegree, XXminute, XXsecond]), np.array([XXdegree, XXminute, XXsecond]), longitude, genTimeSeries(timeChar)
-			Equatorial2HourAngle(np.array([22,58,21]),np.array([-29,-33,-14])) # get the current HourAngle coordinates in Beijing 
-			output = 
-			(array([ -1.        , -34.        , -47.54860318]), array([-29, -33, -14]))
+		input: np.array([XXhour, XXminute, XXsecond]), np.array([XXdegree, XXminute, XXsecond]), longitude, genTimeSeries(timeChar)
+			Equatorial2HourAngle(time2Dec(np.array([22,58,21])),dec22Dec(np.array([-29,-33,-14]))) # get the current HourAngle coordinates in Beijing 
+			output = (the answer of)
+			(time2Dec(array([ -1.        , -34.        , -47.54860318])), dec22Dec(array([-29, -33, -14])))
 
-			Equatorial2HourAngle(np.array([22,58,21]),np.array([-29,-33,-14]),-30) # get the current HourAngle coordinates at w 30 
-			output = 
-			(array([-11.        , -17.        , -44.11327565]), array([-29, -33, -14]))
+			Equatorial2HourAngle(time2Dec(np.array([22,58,21])),dec22Dec(np.array([-29,-33,-14])),-30) # get the current HourAngle coordinates at w 30 
+			output = (the answer of )
+			(time2Dec(array([-11.        , -17.        , -44.11327565])), dec22Dec(array([-29, -33, -14])))
 
-			Equatorial2HourAngle(np.array([22,58,21]),np.array([-29,-33,-14]),116.4, 
+			Equatorial2HourAngle(time2Dec(np.array([22,58,21])),dec22Dec(np.array([-29,-33,-14])),116.4, 
 								 genTimeSeries('2012-10-29-19-10-25')) # get the HourAngle coordinates in Beijing at 2012-10-29, 19:10:25
-			output = 
-			(array([ -1.        , -29.        , -35.69711348]), array([-29, -33, -14]))
+			output = (the answer of )
+			(time2Dec(array([ -1.        , -29.        , -35.69711348])), dec22Dec(array([-29, -33, -14])))
 
 	for array input:
-		Equatorial2HourAngle(np.array([[22,58,21],[1,38,11]]),np.array([[-29,-33,-14],[-57,-10,-19]]))
-		output = 
-		(array([[ -1.        , -22.        , -39.56088124],
-		       [ 19.        ,  57.        ,  30.43911876]]),
-		 array([[-29, -33, -14],
-			   [-57, -10, -19]]))
+		Equatorial2HourAngle(time2Dec(np.array([[22,58,21],[1,38,11]])),dec22Dec(np.array([[-29,-33,-14],[-57,-10,-19]])))
+		output = (the answer of)
+		(time2Dec(array([[ -1.        , -22.        , -39.56088124],
+		       [ 19.        ,  57.        ,  30.43911876]])),
+		 dec22Dec(array([[-29, -33, -14],
+			   [-57, -10, -19]])))
 		
-		Equatorial2HourAngle(np.array([[22,58,21],[1,38,11]]),np.array([[-29,-33,-14],[-57,-10,-19]]),116.4,genTimeSeries('2012-10-29-19-10-25'))
-		output = 
-		(array([[ -1.        , -29.        , -35.69711348],
-		       [ 19.        ,  50.        ,  34.30288652]]),
-		 array([[-29, -33, -14],
-		       [-57, -10, -19]]))
+		Equatorial2HourAngle(time2Dec(np.array([[22,58,21],[1,38,11]])),dec22Dec(np.array([[-29,-33,-14],[-57,-10,-19]])),116.4,genTimeSeries('2012-10-29-19-10-25'))
+		output = (the answer of)
+		(time2Dec(array([[ -1.        , -29.        , -35.69711348],
+		       [ 19.        ,  50.        ,  34.30288652]])),
+		 dec22Dec(array([[-29, -33, -14],
+		       [-57, -10, -19]])))
 
 	'''
 
@@ -525,12 +523,12 @@ def Equatorial2HourAngle(inputAlpha,inputDelta,longitude=116.4,Time=[]):
 	elif len(Time)==1:
 		dateAndTime = Time
 
-	alpha = time2Dec(inputAlpha)
+	alpha = inputAlpha
 	delta = inputDelta
 	
 	lst = LST(dateAndTime[:,0], dateAndTime[:,1], dateAndTime[:,2], dateAndTime[:,3] -8 + dateAndTime[:,4]/60. + dateAndTime[:,5]/3600., longitude)
 	t = lst - alpha
-	t = dec2Time(t)
+	#t = dec2Time(t)
 
 	return t, delta 
 
@@ -538,8 +536,8 @@ def HourAngle2Equatorial(inputHourAngle,inputDelta,longitude=116.4,Time=[]):
 	'''
 	Equatorial coordinate system to HourAngle coordinate system
 		HourAngle2Equatorial(inputHourAngle,inputDelta,longitude=116.4,Time=[])
-		inputHourAngle is the hourAngle of the object
-		inputDelta is the latitude of the object
+		inputHourAngle is the hourAngle of the object (should be degrees)
+		inputDelta is the latitude of the object (should be degrees)
 		longitude is the geographic longitude of the observatory (default is 116.4 in Beijing)
 		Time is the timeAndData list generated by function genTimeSeries, which represent the time, default is NOW.
 
@@ -556,13 +554,12 @@ def HourAngle2Equatorial(inputHourAngle,inputDelta,longitude=116.4,Time=[]):
 	elif len(Time)==1:
 		dateAndTime = Time
 
-	hourAngle = time2Dec(inputHourAngle)
-
+	hourAngle = inputHourAngle
 	delta = inputDelta
 	
 	lst = LST(dateAndTime[:,0], dateAndTime[:,1], dateAndTime[:,2], dateAndTime[:,3] -8 + dateAndTime[:,4]/60. + dateAndTime[:,5]/3600., longitude)
-	theta = lst - hourAngle
-	theta = dec2Time(theta)
+	theta = (lst - hourAngle) % 360
+	#theta = dec2Time(theta)
 	return theta, delta
 
 
@@ -630,4 +627,51 @@ def juliandate(year,month,day,hour,min,sec):
 		(hour + min/60.0 + sec/3600.0)/24.0)
 	return jd
  
- 
+def StereographicProjection(inputLong,inputLat,scale,Dtype="sphere",*Data):
+	"""
+		inputLong, inputLat, Should be in degree!
+	"""
+	long = dec2Rad(inputLong)
+	lat = dec2Rad(-inputLat)
+	
+	if Dtype=="sphere":	
+		alpha = Data[0]
+		delta = Data[1]
+		N = len(alpha)
+		initX, initY, initZ = sphere2Rect(np.ones((N)), alpha, delta)
+	elif Dtype=="rect":
+		if len(Data)==1:
+			initX, initY, initZ = Data[0][0],Data[0][1],Data[0][2]
+		else:
+			initX, initY, initZ = Data[0],Data[1],Data[2]
+	else:
+		print "Error Format!\n"
+
+	initCords = np.mat([initX, initY, initZ])
+	newCords = rotx(np.pi/2-lat) *rotz(long-np.pi/2) * initCords
+	temp, newAlpha, newDelta = rect2Sphere(newCords[0].A1, newCords[1].A1, newCords[2].A1)
+	#pdb.set_trace()	
+	newAlpha = dec2Rad(newAlpha)
+	newDelta = dec2Rad(newDelta)
+
+	Rs = scale/np.tan( (np.pi/2-newDelta)/2)
+	x = Rs * np.cos(newAlpha)
+	y = Rs * np.sin(newAlpha)
+	return x,y
+
+def xyzAngularDistance(Apoints, Bpoints):
+	ARpos = rect2Sphere(Apoints)
+	BRpos = rect2Sphere(Bpoints)
+	DeltaAlpha = dec2Rad(np.abs(ARpos[1]-BRpos[1]))
+	DeltaDelta = dec2Rad(np.abs(ARpos[2]-BRpos[2]))
+	return rad2Dec_postive(np.arccos(np.cos(DeltaAlpha) * np.cos(DeltaDelta)))
+	
+def sphereAngularDistance(pointA,pointB):
+	'''
+	points = np.array([alpha,
+					   delta]) # all in degree
+	'''
+	DeltaAlpha = dec2Rad(np.abs(pointA[0]-pointB[0]))
+	DeltaDelta = dec2Rad(np.abs(pointA[1]-pointB[1]))
+	return rad2Dec_postive(np.arccos(np.cos(DeltaAlpha) * np.cos(DeltaDelta)))
+
