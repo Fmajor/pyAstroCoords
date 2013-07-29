@@ -21,6 +21,7 @@ import numpy as np
 from copy import deepcopy
 import time
 import pdb
+import matplotlib.pyplot as plt
 
 def rect2Sphere(*args):
 	'''
@@ -64,6 +65,9 @@ def rect2Sphere(*args):
 	xx = x/r
 	yy = y/r
 	zz = z/r
+	xxZero = (xx==0)
+	yy[xxZero] = 0
+	xx[xxZero] = 1
 	alpha = np.arcsin(zz)
 	delta = np.arctan(yy/xx)
 	delta = delta + (xx<0)*np.pi
@@ -222,7 +226,7 @@ def dec22Dec(Dec2):
 
 			dec22Dec(np.array([45,30,00])) # 45 degree 30 minute 0 second
 			output = 
-			45.0
+			45.5
 			it is the degree
 
 		for array dec2s
@@ -627,32 +631,49 @@ def juliandate(year,month,day,hour,min,sec):
 		(hour + min/60.0 + sec/3600.0)/24.0)
 	return jd
  
-def StereographicProjection(inputLong,inputLat,scale,Dtype="sphere",*Data):
+def StereographicProjection(inputLong,inputLat,scale,Dtype,*Data):
 	"""
-		inputLong, inputLat, Should be in degree!
+	StereographicProjection for point in the sphere coordinate system
+	inputLong, inputLat are the RA and Dec of the projection center (should be in degree)
+	scale is the factor to contral the scale of the output x,y
+	Dtype is the data type of your point to projection
+		Dtype = "sphere"
+			Data is like (np.array([RA1, RA2, ....]), np.array([Dec1, Dec2, ......]))
+			they should be decs
+		Dtype = "rect"
+			for single input
+				Data is like np.array([x0,y0,z0])
+			for multi input
+				Data is like (np.array([x1, x2, ...]), np.array([y1, y2, ...]), np.array([z1, z2, ....]))
+	output are the (x,y) coordinates of the projection	
 	"""
 	long = dec2Rad(inputLong)
-	lat = dec2Rad(-inputLat)
+	lat = dec2Rad(inputLat)
 	
 	if Dtype=="sphere":	
 		alpha = Data[0]
 		delta = Data[1]
 		N = len(alpha)
 		initX, initY, initZ = sphere2Rect(np.ones((N)), alpha, delta)
+		initCords = np.mat([initX, initY, initZ])
 	elif Dtype=="rect":
 		if len(Data)==1:
 			initX, initY, initZ = Data[0][0],Data[0][1],Data[0][2]
+			initCords = np.mat([initX, initY, initZ]).T
 		else:
 			initX, initY, initZ = Data[0],Data[1],Data[2]
+			initCords = np.mat([initX, initY, initZ])
 	else:
 		print "Error Format!\n"
 
-	initCords = np.mat([initX, initY, initZ])
-	newCords = rotx(np.pi/2-lat) *rotz(long-np.pi/2) * initCords
+	#pdb.set_trace()
+	newCords = rotx(lat+np.pi/2) *rotz(long-np.pi/2) * initCords
 	temp, newAlpha, newDelta = rect2Sphere(newCords[0].A1, newCords[1].A1, newCords[2].A1)
+	xxZero = (newCords[0].A1==0)
 	#pdb.set_trace()	
 	newAlpha = dec2Rad(newAlpha)
-	newDelta = dec2Rad(newDelta)
+	newDelta = dec2Rad(newDelta) + xxZero*inputLong/180*np.pi
+	#pdb.set_trace()
 
 	Rs = scale/np.tan( (np.pi/2-newDelta)/2)
 	x = Rs * np.cos(newAlpha)
@@ -660,6 +681,9 @@ def StereographicProjection(inputLong,inputLat,scale,Dtype="sphere",*Data):
 	return x,y
 
 def xyzAngularDistance(Apoints, Bpoints):
+	'''
+	return the angular distance of tow rect coordinates in the sphere coordinate system
+	'''
 	ARpos = rect2Sphere(Apoints)
 	BRpos = rect2Sphere(Bpoints)
 	DeltaAlpha = dec2Rad(np.abs(ARpos[1]-BRpos[1]))
@@ -668,10 +692,53 @@ def xyzAngularDistance(Apoints, Bpoints):
 	
 def sphereAngularDistance(pointA,pointB):
 	'''
-	points = np.array([alpha,
-					   delta]) # all in degree
+	return the angular distance of tow sphere coordinates in the sphere coordinate system
+	points = np.array([alpha, delta]) # all in degree
 	'''
 	DeltaAlpha = dec2Rad(np.abs(pointA[0]-pointB[0]))
 	DeltaDelta = dec2Rad(np.abs(pointA[1]-pointB[1]))
 	return rad2Dec_postive(np.arccos(np.cos(DeltaAlpha) * np.cos(DeltaDelta)))
+
+def plotHorizon():
+	'''
+	plot the Stereographic Projection with the center of the north pole
+	also with 4 latitude lines with the latitude of 0(the horizon), 30, 60 and 80.
+	'''
+	long=np.linspace(0,360,200)
+	lat1=np.ones(long.shape)*0
+	lat2=np.ones(long.shape)*30
+	lat3=np.ones(long.shape)*60
+	lat4=np.ones(long.shape)*80
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+	plt.axis('equal')
+	ax.set_xlim(-1,1)
+	ax.set_ylim(-1,1)
+	xx,yy = StereographicProjection(180,90,1,"sphere",long,lat1)
+	plt.plot(xx,yy,'--',label='Alt:$0^{\\circ}$')
+	xx,yy = StereographicProjection(180,90,1,"sphere",long,lat2)
+	plt.plot(xx,yy,'--',label='Alt:$30^{\\circ}$')
+	xx,yy = StereographicProjection(180,90,1,"sphere",long,lat3)
+	plt.plot(xx,yy,'--',label='Alt:$60^{\\circ}$')
+	xx,yy = StereographicProjection(180,90,1,"sphere",long,lat4)
+	plt.plot(xx,yy,'--',label='Alt:$80^{\\circ}$')
+	ax.legend()
+	return ax
+
+def starFixed2LocalHorizontalMat(long_dec, lat_dec):
+	'''
+	return the rotating matrix from starFixed coordinate to local horizon coordinate
+	Example: if we have a position vector like pos = np.mat([[1e10],
+	                                                         [2e10],
+	                                                         [3e10]]) relative to earth fix frame,
+	then let M = starFixed2LocalHorizontalMat(116.4, 39.9)
+	newPos = M * pos is the position vector in beijing horizontal frame
+	'''
+	long = dec2Rad(long_dec)
+	lat  = dec2Rad(lat_dec)
+	#                     new          x             y           z           axis directions
+	coorMat = np.mat(np.array([[-np.cos(long)*np.sin(lat), -np.sin(long), np.cos(long)*np.cos(lat)],
+	                           [-np.sin(long)*np.sin(lat),  np.cos(long), np.sin(long)*np.cos(lat)],
+	                           [ np.cos(lat)             ,       0      , np.sin(lat)         ]]))
+	return coorMat.I
 
